@@ -11,3 +11,8 @@ class InvestmentAccountListCreateView(generics.ListCreateAPIView):
     queryset = InvestmentAccount.objects.all()
     serializer_class = InvestmentAccountSerializer
     permission_classes = [IsAuthenticated, IsAccountFullAccess]
+
+class InvestmentAccountDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = InvestmentAccount.objects.all()
+    serializer_class = InvestmentAccountSerializer
+    permission_classes = [IsAuthenticated, IsAccountFullAccess]
