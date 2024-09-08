@@ -16,3 +16,8 @@ class InvestmentAccountDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = InvestmentAccount.objects.all()
     serializer_class = InvestmentAccountSerializer
     permission_classes = [IsAuthenticated, IsAccountFullAccess]
+
+class TransactionCreateView(generics.CreateAPIView):
+    queryset = Transaction.objects.all()
+    serializer_class = TransactionSerializer
+    permission_classes = [IsAuthenticated, IsAccountPostOnly]
