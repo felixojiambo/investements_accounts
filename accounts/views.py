@@ -10,7 +10,8 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
-
+from django.utils.timezone import make_aware
+from datetime import datetime, time
 from .models import InvestmentAccount, UserAccount, Transaction
 from .permissions import DynamicAccountPermission
 from .serializers import (
@@ -263,8 +264,6 @@ class TransactionDetailView(generics.GenericAPIView):
         instance.delete()
 
 
-from django.utils.timezone import make_aware
-from datetime import datetime, time
 
 class AdminUserTransactionsView(generics.ListAPIView):
     """

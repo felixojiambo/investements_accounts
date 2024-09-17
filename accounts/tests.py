@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 import json
 from django.contrib.auth.models import User
@@ -316,52 +316,105 @@ class TransactionDetailViewTests(APITestCase):
         print(f"DELETE transaction response: {response.status_code}")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Transaction.objects.filter(id=self.transaction.id).exists())
-#
-# from django.utils.timezone import make_aware
-# from datetime import datetime, time
-#
-# class AdminUserTransactionsViewTests(APITestCase):
-#
-#     def setUp(self):
-#         # Create an admin user
-#         self.admin_user = User.objects.create_superuser(username='admin', password='adminpassword')
-#         self.client = APIClient()
-#         self.client.force_authenticate(user=self.admin_user)
-#
-#         # Create an InvestmentAccount instance
-#         self.investment_account = InvestmentAccount.objects.create(
-#             name='Test Account',
-#             permission_level=InvestmentAccount.FULL_ACCESS
-#         )
-#
-#         # Create a normal user and some transactions
-#         self.user = User.objects.create_user(username='testuser', password='testpassword')
-#         self.user_account = UserAccount.objects.create(user=self.user, account_type=self.investment_account,
-#                                                        balance=1000)
-#
-#         # Create transactions with specific timestamps within 2023
-#         date_within_range = make_aware(datetime(2023, 6, 15, 10, 0, 0))
-#         Transaction.objects.create(user_account=self.user_account, amount=100, transaction_type='credit',
-#                                    created_at=date_within_range)
-#         Transaction.objects.create(user_account=self.user_account, amount=200, transaction_type='debit',
-#                                    created_at=date_within_range)
-#
-#         # Print created transactions for debugging
-#         transactions = Transaction.objects.all()
-#         print(f"Transactions created in setUp: {transactions.values('id', 'amount', 'created_at')}")
-#
-#     def test_retrieve_transactions_within_date_range(self):
-#         """Test that an admin can retrieve transactions within a specific date range."""
-#         url = reverse('transactions:admin-user-transactions')
-#         data = {
-#             'user_id': self.user.id,
-#             'start_date': '2023-01-01',
-#             'end_date': '2023-12-31',
-#         }
-#         response = self.client.get(url, data)
-#         print(f"GET transactions within date range response: {response.status_code}")
-#         print(f"Response content: {response.content}")
-#         self.assertEqual(response.status_code, status.HTTP_200_OK)
-#         self.assertIn('transactions', response.data)
-#         self.assertEqual(len(response.data['transactions']), 2)
-#         self.assertEqual(response.data['total_balance'], -100)  # Assuming transactions net to -100
+
+
+class AdminUserTransactionsViewTests(APITestCase):
+
+    def setUp(self):
+        # Create a user and an admin user
+        self.user = User.objects.create_user(username='user', password='password')
+        self.admin_user = User.objects.create_superuser(username='admin', password='password')
+
+        # Create an investment account
+        self.investment_account = InvestmentAccount.objects.create(
+            name='Test Account',
+            permission_level=InvestmentAccount.FULL_ACCESS
+        )
+
+        # Create a user account
+        self.user_account = UserAccount.objects.create(
+            user=self.user,
+            account_type=self.investment_account,
+            account_number='1234567890',
+            balance=1000.00
+        )
+
+        # Create transactions
+        self.transaction1 = Transaction.objects.create(
+            user_account=self.user_account,
+            amount=100.00,
+            transaction_type=Transaction.CREDIT,
+            created_at=make_aware(datetime.now() - timedelta(days=2))
+        )
+        self.transaction2 = Transaction.objects.create(
+            user_account=self.user_account,
+            amount=50.00,
+            transaction_type=Transaction.DEBIT,
+            created_at=make_aware(datetime.now() - timedelta(days=1))
+        )
+
+        # Generate JWT tokens for admin user
+        self.client = APIClient()
+        refresh = RefreshToken.for_user(self.admin_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+
+    def test_admin_can_retrieve_transactions(self):
+        url = reverse('transactions:admin-user-transactions')
+        response = self.client.get(url, {
+            'user_id': self.user.id,
+            'start_date': (datetime.now() - timedelta(days=3)).strftime('%Y-%m-%d'),
+            'end_date': datetime.now().strftime('%Y-%m-%d')
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['transactions']), 2)
+        self.assertEqual(response.data['total_balance'], 150.00)
+
+    def test_non_admin_cannot_retrieve_transactions(self):
+        # Generate JWT tokens for non-admin user
+        refresh = RefreshToken.for_user(self.user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+
+        url = reverse('transactions:admin-user-transactions')
+        response = self.client.get(url, {
+            'user_id': self.user.id,
+            'start_date': (datetime.now() - timedelta(days=3)).strftime('%Y-%m-%d'),
+            'end_date': datetime.now().strftime('%Y-%m-%d')
+        })
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_missing_user_id(self):
+        url = reverse('transactions:admin-user-transactions')
+        response = self.client.get(url, {
+            'start_date': (datetime.now() - timedelta(days=3)).strftime('%Y-%m-%d'),
+            'end_date': datetime.now().strftime('%Y-%m-%d')
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['error'], 'User ID is required.')
+
+    def test_missing_dates(self):
+        url = reverse('transactions:admin-user-transactions')
+        response = self.client.get(url, {
+            'user_id': self.user.id
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['error'], 'Both start_date and end_date are required.')
+
+    def test_invalid_date_format(self):
+        url = reverse('transactions:admin-user-transactions')
+        response = self.client.get(url, {
+            'user_id': self.user.id,
+            'start_date': 'invalid-date',
+            'end_date': datetime.now().strftime('%Y-%m-%d')
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['error'], 'Dates must be in the format YYYY-MM-DD.')
+
+    def test_start_date_after_end_date(self):
+        url = reverse('transactions:admin-user-transactions')
+        response = self.client.get(url, {
+            'user_id': self.user.id,
+            'start_date': datetime.now().strftime('%Y-%m-%d'),
+            'end_date': (datetime.now() - timedelta(days=3)).strftime('%Y-%m-%d')
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['error'], 'Start date must be before end date.')
