@@ -12,7 +12,7 @@ class BaseAccountPermission(BasePermission):
         Retrieve the UserAccount instance based on the provided account_id in the request.
         """
         account_id = request.query_params.get('account_id') or request.data.get('account_id')
-        print(f"Account ID: {account_id}")  # Add logging here
+        print(f"Account ID: {account_id}") 
         if not account_id:
             return None
 
