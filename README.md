@@ -76,6 +76,311 @@ This command will:
     python manage.py runserver
     ```
 
+## API Endpoints Documentation
+
+### 1. **Creating Investment Accounts (Account Types)**
+
+**Permissions**: Admin or authorized users with permission to create investment accounts.
+
+Investment accounts are created with specific permission levels (`view_only`, `full_access`, `post_only`). These accounts are created via the `/investment-accounts/` endpoint.
+
+#### Example Request to Create Investment Accounts:
+```bash
+POST /investment-accounts/
+
+{
+  "name": "Savings Account",
+  "description": "This account allows view-only access.",
+  "permission_level": "view_only"
+}
+```
+
+#### Available Permission Levels:
+- **view_only**: Users can only view transactions.
+- **full_access**: Users can perform full CRUD operations.
+- **post_only**: Users can only create (post) transactions but cannot view or modify existing ones.
+
+#### Example Response:
+```json
+{
+  "id": 1,
+  "name": "Savings Account",
+  "description": "This account allows view-only access.",
+  "permission_level": "view_only",
+  "created_at": "2024-09-20T10:00:00Z"
+}
+```
+
+---
+
+### 2. **Assigning Users to Investment Accounts (Creating User Accounts)**
+
+**Permissions**: Requires JWT authentication for the authenticated user.
+
+Once the investment accounts (account types) are created, users are assigned to these accounts by creating **UserAccount** instances via the `/user-accounts/create/` endpoint.
+
+#### Example Request to Create User Accounts:
+```bash
+POST /user-accounts/create/
+
+{
+  "user": 1,  # User ID
+  "account_type": 1  # Investment Account Type ID
+}
+```
+
+This request assigns a user to an investment account (based on the `InvestmentAccount` type). The user now has an individual **UserAccount** with its own balance and account number.
+
+#### Example Response:
+```json
+{
+  "id": 1,
+  "user": 1,
+  "balance": "1000.00",
+  "account_type": {
+    "id": 1,
+    "name": "Savings Account",
+    "permission_level": "view_only"
+  },
+  "account_number": "123456789",
+  "created_at": "2024-09-20T10:00:00Z"
+}
+```
+
+---
+
+### 3. **Listing User Accounts**
+
+**Permissions**: Requires JWT authentication for the authenticated user.
+
+Users can list all their assigned accounts via the `/user-accounts/` endpoint. This will return all **UserAccount** instances associated with the authenticated user.
+
+#### Example Request to List User Accounts:
+```bash
+GET /user-accounts/
+```
+
+#### Example Response:
+```json
+[
+  {
+    "id": 1,
+    "user": 1,
+    "balance": "1000.00",
+    "account_type": {
+      "id": 1,
+      "name": "Savings Account",
+      "permission_level": "view_only"
+    }
+  },
+  {
+    "id": 2,
+    "user": 1,
+    "balance": "500.00",
+    "account_type": {
+      "id": 2,
+      "name": "Investment Account",
+      "permission_level": "full_access"
+    }
+  }
+]
+```
+
+---
+
+### 4. **Creating Transactions**
+
+**Permissions**:
+- **view_only** accounts: Users **cannot** create transactions.
+- **full_access** accounts: Users **can** create transactions (debit or credit).
+- **post_only** accounts: Users **can only post** (create) transactions, but cannot view existing ones.
+
+Transactions (debits or credits) can be created for user accounts via the `/transactions/create/` endpoint. This allows users to post new financial transactions (such as adding or withdrawing funds) to their accounts.
+
+#### Example Request to Create Transactions:
+```bash
+POST /transactions/create/
+
+{
+  "account_id": 1,  # User Account ID
+  "amount": 100.00,
+  "transaction_type": "credit"
+}
+```
+
+#### Available Transaction Types:
+- **credit**: Add funds to the user’s account.
+- **debit**: Withdraw funds from the user’s account.
+
+#### Example Response:
+```json
+{
+  "id": 1,
+  "user_account": 1,
+  "amount": "100.00",
+  "transaction_type": "credit",
+  "created_at": "2024-09-20T10:00:00Z"
+}
+```
+
+---
+
+### 5. **Listing Transactions**
+
+**Permissions**:
+- **view_only** accounts: Users can view transactions.
+- **full_access** accounts: Users can view transactions.
+- **post_only** accounts: Users **cannot** view transactions.
+
+Users can view a list of all transactions for a specific account by sending a request to the `/transactions/list/` endpoint, specifying the account for which they want to view the transactions.
+
+#### Example Request to List Transactions:
+```bash
+GET /transactions/list/?account_id=1
+```
+
+#### Example Response:
+```json
+[
+  {
+    "id": 1,
+    "user_account": 1,
+    "amount": "100.00",
+    "transaction_type": "credit",
+    "created_at": "2024-09-20T10:00:00Z"
+  },
+  {
+    "id": 2,
+    "user_account": 1,
+    "amount": "50.00",
+    "transaction_type": "debit",
+    "created_at": "2024-09-21T10:00:00Z"
+  }
+]
+```
+
+---
+
+### 6. **Retrieving Transaction Details**
+
+**Permissions**:
+- **view_only** accounts: Users can view transaction details.
+- **full_access** accounts: Users can view transaction details.
+- **post_only** accounts: Users **cannot** view transaction details.
+
+To retrieve the details of a specific transaction, users can send a request to the `/transactions/<transaction_id>/` endpoint. This will return detailed information about the selected transaction.
+
+#### Example Request to Retrieve Transaction Details:
+```bash
+GET /transactions/1/
+```
+
+#### Example Response:
+```json
+{
+  "id": 1,
+  "user_account": 1,
+  "amount": "100.00",
+  "transaction_type": "credit",
+  "created_at": "2024-09-20T10:00:00Z"
+}
+```
+
+---
+
+### 7. **Admin: Viewing User Transactions**
+
+**Permissions**: Requires **Admin** privileges.
+
+Admins can view all transactions for a specific user across all their accounts, with filtering by date range, using the `/transactions/admin/user-transactions/` endpoint.
+
+#### Example Request to View User Transactions (Admin Only):
+```bash
+GET /transactions/admin/user-transactions/?user_id=1&start_date=2024-09-01&end_date=2024-09-30
+```
+
+#### Example Response:
+```json
+{
+  "transactions": [
+    {
+      "id": 1,
+      "user_account": 1,
+      "amount": "100.00",
+      "transaction_type": "credit",
+      "created_at": "2024-09-10T10:00:00Z"
+    },
+    {
+      "id": 2,
+      "user_account": 2,
+      "amount": "50.00",
+      "transaction_type": "debit",
+      "created_at": "2024-09-15T10:00:00Z"
+    }
+  ],
+  "total_balance": "150.00"
+}
+```
+
+This response includes:
+- A list of all transactions for the specified user within the date range.
+- The total balance (sum) of the user’s transactions during the specified period.
+
+---
+
+### 8. **Updating Transactions (Full Access)**
+
+**Permissions**:
+- **view_only** accounts: Users **cannot** update transactions.
+- **full_access** accounts: Users **can** update transactions.
+- **post_only** accounts: Users **cannot** update transactions.
+
+Users with full CRUD access (for **Investment Account 2**) can update existing transactions via the `/transactions/<transaction_id>/` endpoint using `PUT` or `PATCH` requests.
+
+#### Example Request to Update Transactions:
+```bash
+PUT /transactions/1/
+
+{
+  "amount": 200.00,
+  "transaction_type": "credit"
+}
+```
+
+#### Example Response:
+```json
+{
+  "id": 1,
+  "user_account": 1,
+  "amount": "200.00",
+  "transaction_type": "credit",
+  "created_at": "2024-09-20T10:00:00Z"
+}
+```
+
+---
+
+### 9. **Deleting Transactions (Full Access)**
+
+**Permissions**:
+- **view_only** accounts: Users **cannot** delete transactions.
+- **full_access** accounts: Users **can** delete transactions.
+- **post_only** accounts: Users **cannot** delete transactions.
+
+Users with full CRUD access can delete transactions using the `/transactions/<transaction_id>/` endpoint.
+
+#### Example Request to Delete Transactions:
+```bash
+DELETE /transactions/1/
+```
+
+#### Example Response:
+```bash
+HTTP 204 No Content
+```
+
+The response indicates the transaction has been successfully deleted.
+
 ## API Endpoints
 
 ### Authentication
