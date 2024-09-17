@@ -1,8 +1,19 @@
 services:
+  db:
+    image: nouchka/sqlite3
+    container_name: sqlite3
+    volumes:
+      - db_data:/app/db
+
   web:
     build: .
-    command: gunicorn investment_accounts.wsgi:application --bind 0.0.0.0:8000
+    command: sh -c "python manage.py runserver 0.0.0.0:8000"
     volumes:
       - .:/app
     ports:
       - "8000:8000"
+    depends_on:
+      - db
+
+volumes:
+  db_data:
