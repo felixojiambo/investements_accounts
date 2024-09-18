@@ -78,7 +78,79 @@ This command will:
 
 ## API Endpoints Documentation
 
-### 1. **Creating Investment Accounts (Account Types)**
+### 1. User Registration
+**Permissions**: Open to all users. No authentication required.
+
+New users can register by providing their email, username, and password via the `/auth/register/` endpoint.
+
+**Example Request to Register a New User**:
+```
+POST /auth/register/
+
+{
+  "email": "user@example.com",
+  "username": "newuser",
+  "password": "securepassword123"
+}
+```
+
+**Example Response**:
+```
+{
+  "id": 1,
+  "username": "newuser",
+  "email": "user@example.com"
+}
+```
+
+---
+
+### 2. Obtain JWT Token
+**Permissions**: No authentication required.
+
+To access protected resources, users must obtain a JWT token by providing their username and password via the `/auth/token/` endpoint.
+
+**Example Request to Obtain Token**:
+```
+POST /auth/token/
+
+{
+  "username": "newuser",
+  "password": "securepassword123"
+}
+```
+
+**Example Response**:
+```
+{
+  "refresh": "your_refresh_token",
+  "access": "your_access_token"
+}
+```
+
+---
+
+### 3. Refresh JWT Token
+**Permissions**: JWT token required (refresh token).
+
+To refresh the access token when it expires, users can send the refresh token to the `/auth/token/refresh/` endpoint.
+
+**Example Request to Refresh Token**:
+```
+POST /auth/token/refresh/
+
+{
+  "refresh": "your_refresh_token"
+}
+```
+
+**Example Response**:
+```
+{
+  "access": "new_access_token"
+}
+```
+### 4. **Creating Investment Accounts (Account Types)**
 
 **Permissions**: Admin or authorized users with permission to create investment accounts.
 
@@ -113,7 +185,7 @@ POST /investment-accounts/
 
 ---
 
-### 2. **Assigning Users to Investment Accounts (Creating User Accounts)**
+### 5. **Assigning Users to Investment Accounts (Creating User Accounts)**
 
 **Permissions**: Requires JWT authentication for the authenticated user.
 
@@ -149,7 +221,7 @@ This request assigns a user to an investment account (based on the `InvestmentAc
 
 ---
 
-### 3. **Listing User Accounts**
+### 6. **Listing User Accounts**
 
 **Permissions**: Requires JWT authentication for the authenticated user.
 
@@ -188,7 +260,7 @@ GET /user-accounts/
 
 ---
 
-### 4. **Creating Transactions**
+### 7. **Creating Transactions**
 
 **Permissions**:
 - **view_only** accounts: Users **cannot** create transactions.
@@ -225,7 +297,7 @@ POST /transactions/create/
 
 ---
 
-### 5. **Listing Transactions**
+### 8. **Listing Transactions**
 
 **Permissions**:
 - **view_only** accounts: Users can view transactions.
@@ -261,7 +333,7 @@ GET /transactions/list/?account_id=1
 
 ---
 
-### 6. **Retrieving Transaction Details**
+### 9. **Retrieving Transaction Details**
 
 **Permissions**:
 - **view_only** accounts: Users can view transaction details.
@@ -288,7 +360,7 @@ GET /transactions/1/
 
 ---
 
-### 7. **Admin: Viewing User Transactions**
+### 10. **Admin: Viewing User Transactions**
 
 **Permissions**: Requires **Admin** privileges.
 
@@ -328,7 +400,7 @@ This response includes:
 
 ---
 
-### 8. **Updating Transactions (Full Access)**
+### 11. **Updating Transactions (Full Access)**
 
 **Permissions**:
 - **view_only** accounts: Users **cannot** update transactions.
@@ -360,7 +432,7 @@ PUT /transactions/1/
 
 ---
 
-### 9. **Deleting Transactions (Full Access)**
+### 12. **Deleting Transactions (Full Access)**
 
 **Permissions**:
 - **view_only** accounts: Users **cannot** delete transactions.
